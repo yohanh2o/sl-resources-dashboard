@@ -16,24 +16,9 @@
 <!-- Chart.js from cdnjs (jsDelivr is blocked in this environment) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
-<!-- ââ Okta Auth JS SDK âââââââââââââââââââââââââââââââââââââââââââââââââââââ -->
-<script src="https://global.oktacdn.com/okta-auth-js/7.7.0/okta-auth-js.min.js"></script>
 <script>
-// ââ OKTA CONFIG â fill these in with values from your IT/Okta admin ââââââââ
-//   1. Create an OIDC "Single-Page Application" in the Okta admin console
-//   2. Set the Login redirect URI to this page's URL (e.g. https://yohanh2o.github.io/sl-resources-dashboard/)
-//   3. Set the Logout redirect URI to the same URL
-//   4. Paste the Client ID and your Okta org domain below
-var OKTA_DOMAIN  = 'https://sso.h2o.ai';
-var CLIENT_ID    = '0oaylelt9vM8K4cUD4x7';
-// ââ Runtime context markers (do not modify) ââââââââââââââââââââââââââââââââââ
-var _r0 = 'apx-03b2464b2aced1ba1e7bbe-d1';
-var _r1 = 'f4a88ec2f8118c4827bd15';
-var _r2 = {v:2, k:'c7a350caeb7ec66a5c02'};
-
-async function _decryptData() {
-  var hx = _r0.slice(4,26) + _r1 + _r2.k;
-  var kb = new Uint8Array(hx.match(/.{2}/g).map(function(b){return parseInt(b,16);}));
+async function _decryptData(hexKey) {
+  var kb = new Uint8Array(hexKey.match(/.{2}/g).map(function(b){return parseInt(b,16);}));
   var ck = await crypto.subtle.importKey('raw',kb,{name:'AES-GCM'},false,['decrypt']);
   var b64 = document.getElementById('dashEnc').textContent.trim();
   var bin = atob(b64);
@@ -46,66 +31,46 @@ async function _decryptData() {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
-// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-
-var _authClient = new OktaAuth({
-  issuer:      OKTA_DOMAIN + '/oauth2/default',
-  clientId:    CLIENT_ID,
-  redirectUri: window.location.origin + window.location.pathname.replace(/\/$/, '') + '/',
-  scopes:      ['openid', 'profile', 'email'],
-  pkce:        true,
-  tokenManager: { autoRenew: true }
-});
-
 document.addEventListener('DOMContentLoaded', function () {
   var overlay = document.getElementById('auth-overlay');
+  var keyInput = document.getElementById('unlock-key');
+  var keyError = document.getElementById('key-error');
+  var unlockBtn = document.getElementById('unlock-btn');
 
-  function showDashboard(user) {
-    var nameEl = document.getElementById('auth-user-name');
-    if (nameEl && user) nameEl.textContent = (user.name || user.email || '');
-    _decryptData().then(function(data) {
+  window.unlockDashboard = function() {
+    var hex = keyInput.value.trim().toLowerCase().replace(/\s/g,'');
+    if (hex.length !== 64 || !/^[0-9a-f]+$/.test(hex)) {
+      keyError.textContent = 'Key must be exactly 64 hex characters.';
+      keyInput.style.borderColor = '#DC2626';
+      return;
+    }
+    unlockBtn.disabled = true;
+    unlockBtn.textContent = 'Unlocking…';
+    keyError.textContent = '';
+    _decryptData(hex).then(function(data) {
       _initDashData(data);
       if (overlay) overlay.style.display = 'none';
     }).catch(function(e) {
-      if (overlay) overlay.innerHTML =
-        '<div style="text-align:center;font-family:system-ui">'
-        + '<div style="font-size:32px;margin-bottom:12px">â ï¸</div>'
-        + '<div style="color:#DC2626;font-size:14px;margin-bottom:16px">Data load failed: '
-        + (e.message||e) + '</div>'
-        + '<button onclick="location.reload()" style="padding:8px 20px;background:#FFD300;border:none;border-radius:6px;font-weight:700;cursor:pointer">Retry</button>'
-        + '</div>';
+      keyError.textContent = 'Invalid key — decryption failed. Please check and try again.';
+      keyInput.style.borderColor = '#DC2626';
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = 'Unlock';
     });
-  }
+  };
 
-  function handleError(err) {
-    if (overlay) overlay.innerHTML =
-      '<div style="text-align:center;font-family:system-ui">'
-      + '<div style="font-size:32px;margin-bottom:12px">ð</div>'
-      + '<div style="color:#DC2626;font-size:14px;margin-bottom:16px">Authentication failed: ' + (err.message || err) + '</div>'
-      + '<button onclick="_authClient.signInWithRedirect()" style="padding:8px 20px;background:#FFD300;border:none;border-radius:6px;font-weight:700;cursor:pointer">Try again</button>'
-      + '</div>';
-  }
-
-  if (_authClient.isLoginRedirect()) {
-    // Returning from Okta â parse the token
-    _authClient.handleLoginRedirect()
-      .then(function () { return _authClient.getUser(); })
-      .then(showDashboard)
-      .catch(handleError);
-  } else {
-    _authClient.isAuthenticated().then(function (isAuth) {
-      if (isAuth) {
-        _authClient.getUser().then(showDashboard).catch(function () { showDashboard({}); });
-      } else {
-        // Not logged in â bounce to Okta
-        _authClient.signInWithRedirect();
-      }
+  if (keyInput) {
+    keyInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') window.unlockDashboard();
+    });
+    keyInput.addEventListener('input', function() {
+      keyInput.style.borderColor = '#E2E8F0';
+      keyError.textContent = '';
     });
   }
 });
 
 function signOut() {
-  _authClient.signOut();
+  location.reload();
 }
 </script>
 <style>
@@ -211,10 +176,23 @@ tr:hover td{background:#F8FAFC}
 </head>
 <body>
 
-<!-- ââ Auth overlay (hidden once Okta confirms identity) âââââââââââââââââââ -->
+<!-- ── Auth overlay (hidden after key is verified) ───────────────────── -->
 <div id="auth-overlay">
-  <div class="auth-spinner"></div>
-  <div class="auth-msg">Verifying accessâ¦</div>
+  <div style="background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.12);padding:40px 36px;max-width:420px;width:90%;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+    <img src="https://h2o.ai/content/experience-fragments/h2o/us/en/site/header/master/_jcr_content/root/container/image.coreimg.svg/1711729967445/h2o-logo-new.svg"
+         alt="H2O.ai" style="height:36px;margin-bottom:28px;" onerror="this.style.display='none'">
+    <div style="font-size:22px;font-weight:700;color:#0F172A;margin-bottom:6px;">Sri Lanka Team Dashboard</div>
+    <div style="font-size:13px;color:#64748B;margin-bottom:28px;">Enter your access key to view the dashboard</div>
+    <input id="unlock-key" type="password"
+           placeholder="Paste 64-character hex key…"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           style="width:100%;padding:11px 14px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:13px;font-family:monospace;outline:none;color:#0F172A;margin-bottom:8px;box-sizing:border-box;transition:border-color .15s;">
+    <div id="key-error" style="font-size:12px;color:#DC2626;min-height:18px;margin-bottom:12px;text-align:left;"></div>
+    <button id="unlock-btn" onclick="unlockDashboard()"
+            style="width:100%;padding:12px;background:#FFD300;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;color:#0F172A;transition:background .15s;">
+      Unlock
+    </button>
+  </div>
 </div>
 
 <!-- ââ Encrypted payload (AES-256-GCM) ââ
