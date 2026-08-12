@@ -15,6 +15,68 @@
 <title>H2O.ai â Sri Lanka Resources Dashboard</title>
 <!-- Chart.js from cdnjs (jsDelivr is blocked in this environment) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<!-- ââ Okta Auth JS SDK âââââââââââââââââââââââââââââââââââââââââââââââââââââ -->
+<script src="https://global.oktacdn.com/okta-auth-js/7.7.0/okta-auth-js.min.js"></script>
+<script>
+// ââ OKTA CONFIG â fill these in with values from your IT/Okta admin ââââââââ
+//   1. Create an OIDC "Single-Page Application" in the Okta admin console
+//   2. Set the Login redirect URI to this page's URL (e.g. https://yohanh2o.github.io/sl-resources-dashboard/)
+//   3. Set the Logout redirect URI to the same URL
+//   4. Paste the Client ID and your Okta org domain below
+var OKTA_DOMAIN  = 'https://YOUR_ORG.okta.com';  // e.g. https://h2oai.okta.com
+var CLIENT_ID    = 'YOUR_CLIENT_ID';               // Okta app > General > Client Credentials
+// âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+
+var _authClient = new OktaAuth({
+  issuer:      OKTA_DOMAIN + '/oauth2/default',
+  clientId:    CLIENT_ID,
+  redirectUri: window.location.origin + window.location.pathname.replace(/\/$/, '') + '/',
+  scopes:      ['openid', 'profile', 'email'],
+  pkce:        true,
+  tokenManager: { autoRenew: true }
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+  var overlay = document.getElementById('auth-overlay');
+
+  function showDashboard(user) {
+    var nameEl = document.getElementById('auth-user-name');
+    if (nameEl && user) nameEl.textContent = (user.name || user.email || '');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  function handleError(err) {
+    if (overlay) overlay.innerHTML =
+      '<div style="text-align:center;font-family:system-ui">'
+      + '<div style="font-size:32px;margin-bottom:12px">ð</div>'
+      + '<div style="color:#DC2626;font-size:14px;margin-bottom:16px">Authentication failed: ' + (err.message || err) + '</div>'
+      + '<button onclick="_authClient.signInWithRedirect()" style="padding:8px 20px;background:#FFD300;border:none;border-radius:6px;font-weight:700;cursor:pointer">Try again</button>'
+      + '</div>';
+  }
+
+  if (_authClient.isLoginRedirect()) {
+    // Returning from Okta â parse the token
+    _authClient.handleLoginRedirect()
+      .then(function () { return _authClient.getUser(); })
+      .then(showDashboard)
+      .catch(handleError);
+  } else {
+    _authClient.isAuthenticated().then(function (isAuth) {
+      if (isAuth) {
+        _authClient.getUser().then(showDashboard).catch(function () { showDashboard({}); });
+      } else {
+        // Not logged in â bounce to Okta
+        _authClient.signInWithRedirect();
+      }
+    });
+  }
+});
+
+function signOut() {
+  _authClient.signOut();
+}
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F1F5F9;color:#0F172A;min-height:100vh}
@@ -106,9 +168,23 @@ tr:hover td{background:#F8FAFC}
 .t-summary{margin-top:10px;padding:8px 12px;border-radius:6px;font-weight:700;font-size:13px}
 .t-summary.all-pass{background:#064E3B;color:#34D399}
 .t-summary.has-fail{background:#7F1D1D;color:#F87171}
+/* ââ Auth overlay âââââââââââââââââââââââââââââââââââââââââââ */
+#auth-overlay{position:fixed;inset:0;background:#F1F5F9;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.auth-spinner{width:44px;height:44px;border:4px solid #E2E8F0;border-top-color:#FFD300;border-radius:50%;animation:auth-spin .75s linear infinite}
+@keyframes auth-spin{to{transform:rotate(360deg)}}
+.auth-msg{font-size:13px;color:#64748B;font-weight:500}
+.auth-user{font-size:11px;color:#64748B;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logout-btn{font-size:10px;background:#FEF2F2;color:#DC2626;padding:2px 8px;border-radius:999px;font-weight:600;border:none;cursor:pointer;transition:background .15s}
+.logout-btn:hover{background:#FEE2E2}
 </style>
 </head>
 <body>
+
+<!-- ââ Auth overlay (hidden once Okta confirms identity) âââââââââââââââââââ -->
+<div id="auth-overlay">
+  <div class="auth-spinner"></div>
+  <div class="auth-msg">Verifying accessâ¦</div>
+</div>
 
 <!-- ââ Safe JSON data embedding (avoids JS SyntaxError from inline JSON) ââ -->
 <script type="application/json" id="dashData">
@@ -127,7 +203,9 @@ tr:hover td{background:#F8FAFC}
     <div class="last-updated" id="lastUpdated"></div>
     <div class="top-badges">
       <button class="test-btn" onclick="openTests()">&#129514; Run Tests</button>
+      <button class="logout-btn" onclick="signOut()">Sign out</button>
     </div>
+    <div class="auth-user" id="auth-user-name"></div>
   </div>
 </div>
 
@@ -487,70 +565,4 @@ function runAllTests(){
 </script>
 </body>
 </html>
- 1 mo' : (e.tenure < 1 ? Math.round(e.tenure * 12) + ' mo' : e.tenure.toFixed(1) + ' yr');
-    return '<tr>'
-      + '<td class="name-cell">' + e.name + intern + '</td>'
-      + '<td>' + badge + '</td>'
-      + '<td class="job-title">' + e.jobTitle + '</td>'
-      + '<td class="muted">' + e.manager + '</td>'
-      + '<td class="muted">' + e.department + '</td>'
-      + '<td class="tenure">' + tenure + '</td>'
-      + '<td class="muted">' + e.firstDay + '</td>'
-      + '</tr>';
-  }).join('');
-}
 
-document.getElementById('searchInput').addEventListener('input', renderTable);
-renderTable();
-
-function openTests(){ document.getElementById('testPanel').classList.add('open'); }
-function closeTests(){ document.getElementById('testPanel').classList.remove('open'); }
-
-function runAllTests(){
-  var out = document.getElementById('testOutput');
-  var lines = [];
-  var passed = 0, failed = 0;
-
-  function suite(name){ lines.push('<span class="t-suite">â¶ ' + name + '</span>'); }
-  function pass(msg){ lines.push('<span class="t-pass">â ' + msg + '</span>'); passed++; }
-  function fail(msg){ lines.push('<span class="t-fail">â ' + msg + '</span>'); failed++; }
-  function assert(cond, ok, bad){ cond ? pass(ok) : fail(bad); }
-
-  suite('DATA INTEGRITY');
-  assert(D.totalSL === 36, 'Total LK headcount = 36', 'Total LK headcount expected 36, got ' + D.totalSL);
-  assert(D.totalAll === 118, 'Global headcount = 118', 'Global headcount expected 118, got ' + D.totalAll);
-  assert(D.internCount === 4, 'Intern count = 4', 'Intern count expected 4, got ' + D.internCount);
-  var calcInterns = D.employees.filter(function(e){ return e.isIntern; }).length;
-  assert(calcInterns === 4, 'employees[] contains exactly 4 interns', 'employees[] intern count expected 4, got ' + calcInterns);
-  assert(D.employees.length === 36, 'employees[] array length = 36', 'employees[] length expected 36, got ' + D.employees.length);
-  assert(D.slPctOfAll === 31, 'LK % of global team = 31%', 'LK % expected 31, got ' + D.slPctOfAll);
-  assert(D.productBreakdown.length === 13, 'productBreakdown has 13 products', 'productBreakdown length expected 13, got ' + D.productBreakdown.length);
-
-  suite('PRODUCT HEADCOUNTS');
-  var pbMap = {};
-  D.productBreakdown.forEach(function(p){ pbMap[p.product] = p; });
-  var expected = {'DevOps Infra':7,'DriverlessAI':5,'MC':4,'Platform Services':3,'Verticals':3,'h2oGPTe':3,'Documentation':3,'MLOps':2,'MC Apps':2,'HAIC Delivery':1,'Customer Training':1,'Feature Store':1,'Management':1};
-  Object.keys(expected).forEach(function(prod){
-    var fromBreakdown = pbMap[prod] ? pbMap[prod].slCount : 0;
-    var fromEmployees = D.employees.filter(function(e){ return e.product === prod; }).length;
-    assert(fromBreakdown === expected[prod], prod + ': breakdown count = ' + expected[prod], prod + ': breakdown expected ' + expected[prod] + ', got ' + fromBreakdown);
-    assert(fromEmployees === expected[prod], prod + ': employees[] count = ' + expected[prod], prod + ': employees[] expected ' + expected[prod] + ', got ' + fromEmployees);
-  });
-
-  suite('NAMED EMPLOYEE SPOT-CHECKS');
-  function findEmployee(name){ return D.employees.find(function(e){ return e.name === name; }); }
-  var hasith = findEmployee('Hasith Perera');
-  assert(!!hasith, 'Hasith Perera exists in dataset', 'Hasith Perera NOT FOUND');
-  if(hasith){ assert(hasith.product === 'DevOps Infra', 'Hasith Perera â DevOps Infra', 'Hasith product wrong: ' + hasith.product); }
-  var vijitha = findEmployee('Vijitha Ekanayake');
-  assert(!!vijitha, 'Vijitha Ekanayake exists in dataset', 'Vijitha Ekanayake NOT FOUND');
-  if(vijitha){ assert(vijitha.product === 'Verticals', 'Vijitha Ekanayake â Verticals', 'Vijitha product wrong: ' + vijitha.product); }
-  var yohan = findEmployee('Yohan Trevoy Gnanapragasam');
-  assert(!!yohan, 'Yohan Trevoy Gnanapragasam exists in dataset', 'Yohan NOT FOUND');
-  if(yohan){
-    assert(yohan.product === 'Management', 'Yohan â Management', 'Yohan product wrong: ' + yohan.product);
-    assert(yohan.jobTitle === 'VP of Engineering, APAC', 'Yohan job title correct', 'Yohan job title wrong: ' + yohan.jobTitle);
-  }
-  ['Shashmitha Bandara','Abishanthan Sarawanaraja','Isuru Didulantha','Mamta Nallaretnam'].forEach(function(name){
-    var e = findEmployee(name);
-    assert(!!e && e.isIntern, name + ' is marked intern', name +ræ÷Bf÷VæB÷"æ÷BÖ&¶VBçFW&âr°¢Ò° ¢7VFRtDôÒbTTÄTÔTåE2r°¢76W'BFö7VÖVçBævWDVÆVÖVçD'BwF÷&"rÂr7F÷&"W7G2rÂr7F÷&"æ÷Bf÷VæBr°¢76W'BFö7VÖVçBævWDVÆVÖVçD'BvÖWG&74w&BrÂr6ÖWG&74w&BW7G2rÂr6ÖWG&74w&Bæ÷Bf÷VæBr°¢76W'BFö7VÖVçBævWDVÆVÖVçD'Bw6V&6çWBrÂr76V&6çWBW7G2rÂr76V&6çWBæ÷Bf÷VæBr°¢76W'BFö7VÖVçBævWDVÆVÖVçD'BwFW7D'FârÂr7FW7D'FâW7G2rÂr7FW7D'Fâæ÷Bf÷VæBr°¢76W'BFö7VÖVçBçVW'6VÆV7F÷$ÆÂræÆfRÖ&FvRræÆVæwFÓÓÒÂtæòæÆfRÖ&FvRâDôÒrÂræÆfRÖ&FvRf÷VæB'WB6÷VÆBfR&VVâ&VÖ÷fVBr°¢76W'BFö7VÖVçBçVW'6VÆV7F÷$ÆÂr7&WfWt&ææW"ræÆVæwFÓÓÒÂtæò7&WfWt&ææW"âDôÒrÂr7&WfWt&ææW"f÷VæB'WB6÷VÆBfR&VVâ&VÖ÷fVBr° ¢7VFRt4%B$TÔETärr°¢f"6'D6çf6W2ÒFö7VÖVçBçVW'6VÆV7F÷$ÆÂv6çf2r°¢76W'B6'D6çf6W2æÆVæwFãÒ"ÂtBÆV7B"6'B6çf6W2&VæFW&VBrÂt6'B6çf6W2WV7FVBãÒ"Âv÷Br²6'D6çf6W2æÆVæwF° ¢7VFRu4T$4bdÅDU"eTä5DôäÄEr°¢f"6V&6çWBÒFö7VÖVçBævWDVÆVÖVçD'Bw6V&6çWBr°¢b6V&6çWB°¢6V&6çWBçfÇVRÒt6Fs°¢6V&6çWBæF7F6WfVçBæWrWfVçBvçWBr°¢f"&÷w4gFW%6V&6ÒFö7VÖVçBçVW'6VÆV7F÷$ÆÂr6V×F&ÆT&öGG"ræÆVæwF°¢76W'B&÷w4gFW%6V&6ãÒÂu6V&6f÷"Ât6FÂr&WGW&ç2ãÒ&÷rrÂu6V&6f÷"6F&WGW&æVB&÷w2r°¢6V&6çWBçfÇVRÒrs°¢6V&6çWBæF7F6WfVçBæWrWfVçBvçWBr°¢f"&÷w4gFW$6ÆV"ÒFö7VÖVçBçVW'6VÆV7F÷$ÆÂr6V×F&ÆT&öGG"ræÆVæwF°¢76W'B&÷w4gFW$6ÆV"ÓÓÒ3bÂt6ÆV&ær6V&6&W7F÷&W2ÆÂ3b&÷w2rÂtgFW"6ÆV"ÂWV7FVB3b&÷w2Âv÷Br²&÷w4gFW$6ÆV"°¢ÒVÇ6R²fÂu6V&6çWBæ÷Bf÷VæBr²Ð ¢f"7VÖÖ'ÒsÇ7G&öæsâr²76VB²r76VBÂr²fÆVB²rfÆVCÂ÷7G&öæsâs°¢÷WBæææW$DÔÂÒ7VÖÖ'²sÆ'#ãÆ'#âr²ÆæW2æ¦öâsÆ'#âr°§Ð£Â÷67&Cà£Âö&öGà£ÂöFÖÃà
