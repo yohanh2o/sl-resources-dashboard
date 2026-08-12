@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Sl Resources Dashboard",
+  "schemaVersion": 1,
+  "description": "H2O.ai Sri Lanka Resources Dashboard â 36 active LK employees, product breakdown charts, searchable table, intern filter, and built-in test suite.",
+  "mcpTools": [],
+  "mcpServerNames": []
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>H2O.ai â Sri Lanka Resources Dashboard</title>
+<!-- Chart.js from cdnjs (jsDelivr is blocked in this environment) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F1F5F9;color:#0F172A;min-height:100vh}
+.topbar{background:#fff;border-bottom:1px solid #E2E8F0;padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{background:linear-gradient(135deg,#FFD300,#FFA500);color:#000;font-weight:900;font-size:13px;padding:6px 10px;border-radius:6px;letter-spacing:-.5px}
+.brand-title{font-size:17px;font-weight:700;color:#0F172A}
+.brand-sub{font-size:12px;color:#64748B;margin-top:1px}
+.top-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.last-updated{font-size:12px;color:#94A3B8}
+.top-badges{display:flex;gap:6px}
+.live-badge{font-size:10px;background:#DCFCE7;color:#166534;padding:2px 8px;border-radius:999px;font-weight:600}
+.test-btn{font-size:10px;background:#EEF2FF;color:#4338CA;padding:2px 8px;border-radius:999px;font-weight:600;border:none;cursor:pointer;transition:background .15s}
+.test-btn:hover{background:#C7D2FE}
+.main{max-width:1300px;margin:0 auto;padding:28px 24px 60px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:#fff;border-radius:12px;padding:20px 22px;border:1px solid #E2E8F0;display:flex;flex-direction:column;gap:4px;transition:box-shadow .2s}
+.stat-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.stat-icon{font-size:22px;margin-bottom:6px}
+.stat-value{font-size:36px;font-weight:800;color:#0F172A;line-height:1}
+.stat-label{font-size:13px;color:#64748B;font-weight:500;margin-top:4px}
+.stat-sub{font-size:11px;color:#94A3B8;margin-top:2px}
+.section-title{font-size:11px;font-weight:700;color:#94A3B8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.charts-row{display:grid;grid-template-columns:360px 1fr;gap:16px;margin-bottom:24px}
+@media(max-width:900px){.charts-row{grid-template-columns:1fr}}
+.chart-card{background:#fff;border-radius:12px;border:1px solid #E2E8F0;padding:22px 24px}
+.chart-card h2{font-size:14px;font-weight:700;color:#0F172A;margin-bottom:4px}
+.chart-card .chart-sub{font-size:12px;color:#94A3B8;margin-bottom:16px}
+.donut-outer{display:flex;flex-direction:column;gap:16px;align-items:center}
+.donut-wrap{position:relative;width:180px;height:180px;flex-shrink:0}
+.donut-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.dc-num{font-size:28px;font-weight:800;color:#0F172A}
+.dc-lbl{font-size:11px;color:#64748B}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;width:100%}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;border-radius:6px;padding:2px 4px;transition:background .15s}
+.legend-item:hover{background:#F8FAFC}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.legend-name{flex:1;color:#374151}
+.legend-cnt{color:#0F172A;font-weight:700;min-width:18px;text-align:right}
+.legend-pct{color:#94A3B8;min-width:36px;text-align:right}
+.bar-chart-wrap{height:380px}
+.search-section{margin-bottom:20px}
+.search-bar-wrap{position:relative;max-width:520px}
+.search-bar-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94A3B8;pointer-events:none}
+#searchInput{width:100%;padding:12px 14px 12px 44px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:14px;background:#fff;outline:none;color:#0F172A;transition:border-color .2s}
+#searchInput:focus{border-color:#3B82F6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+#searchInput::placeholder{color:#94A3B8}
+.filter-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.filter-label{font-size:12px;color:#64748B;font-weight:500;white-space:nowrap}
+.chip{padding:5px 12px;border-radius:999px;border:1.5px solid #E2E8F0;background:#fff;font-size:12px;cursor:pointer;color:#374151;font-weight:500;transition:all .15s;white-space:nowrap;user-select:none}
+.chip:hover{border-color:#3B82F6;color:#3B82F6;background:#EFF6FF}
+.chip.active{background:#3B82F6;color:#fff;border-color:#3B82F6}
+.chip.intern-chip{border-color:#F59E0B;color:#92400E;background:#FEF3C7}
+.chip.intern-chip.active{background:#F59E0B;color:#fff;border-color:#F59E0B}
+.table-card{background:#fff;border-radius:12px;border:1px solid #E2E8F0;overflow:hidden}
+.table-header{padding:14px 22px;border-bottom:1px solid #F1F5F9;display:flex;align-items:center;justify-content:space-between}
+.table-header h2{font-size:14px;font-weight:700;color:#0F172A}
+#resultCount{font-size:12px;color:#64748B}
+table{width:100%;border-collapse:collapse}
+th{padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#64748B;letter-spacing:.05em;text-transform:uppercase;background:#F8FAFC;border-bottom:1px solid #E2E8F0;white-space:nowrap}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid #F1F5F9;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#F8FAFC}
+.name-cell{font-weight:600;color:#0F172A}
+.product-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:600}
+.job-title{color:#374151}
+.muted{color:#64748B;font-size:12px}
+.tenure{color:#0F172A;font-weight:600;white-space:nowrap}
+.intern-badge{display:inline-block;padding:2px 7px;border-radius:4px;background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;letter-spacing:.04em;margin-left:6px;vertical-align:middle}
+.no-results{text-align:center;padding:48px 24px;color:#94A3B8;font-size:14px}
+.preview-banner{background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:12px 18px;margin-bottom:20px;font-size:13px;color:#92400E;display:flex;align-items:center;gap:10px}
+
+/* ââ Test Panel âââââââââââââââââââââââââââââââââ */
+#testPanel{display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;max-height:55vh;overflow:hidden;flex-direction:column;background:#0F172A;border-top:2px solid #334155;font-family:'Menlo','Consolas',monospace;font-size:12px;color:#E2E8F0}
+#testPanel.open{display:flex}
+#testToolbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#1E293B;flex-shrink:0}
+#testToolbar span{font-weight:700;color:#94A3B8;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+#testToolbarRight{display:flex;gap:8px;align-items:center}
+#testRunBtn{background:#3B82F6;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer}
+#testRunBtn:hover{background:#2563EB}
+#testCloseBtn{color:#64748B;border:none;background:none;font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+#testCloseBtn:hover{color:#E2E8F0}
+#testOutput{overflow-y:auto;padding:12px 16px;flex:1;line-height:1.7}
+.t-pass{color:#34D399}
+.t-fail{color:#F87171}
+.t-info{color:#94A3B8}
+.t-suite{color:#FBBF24;font-weight:700;margin-top:8px}
+.t-summary{margin-top:10px;padding:8px 12px;border-radius:6px;font-weight:700;font-size:13px}
+.t-summary.all-pass{background:#064E3B;color:#34D399}
+.t-summary.has-fail{background:#7F1D1D;color:#F87171}
+</style>
+</head>
+<body>
+
+<!-- ââ Safe JSON data embedding (avoids JS SyntaxError from inline JSON) ââ -->
+<script type="application/json" id="dashData">
+{"employees":[{"name":"Aaqib Esham","product":"MC","department":"Infrastructure","jobTitle":"DevOps Engineer","manager":"Avner Vidal","tenure":3.6,"isIntern":false,"firstDay":"Sep 12, 2022"},{"name":"Abishanthan Sarawanaraja","product":"Platform Services","department":"Product Engineering","jobTitle":"Intern, Engineering","manager":"Cody Harris","tenure":0.3,"isIntern":true,"firstDay":"Jan 5, 2026"},{"name":"Ahsan Shamsudeen","product":"HAIC Delivery","department":"CS Professional Services","jobTitle":"Senior Solutions Architect","manager":"Hemen Kapadia","tenure":4.4,"isIntern":false,"firstDay":"Nov 29, 2021"},{"name":"Ashfaq Ahamed","product":"MC","department":"Infrastructure","jobTitle":"Senior Security Engineer","manager":"Asaf Oren","tenure":0.6,"isIntern":false,"firstDay":"Oct 6, 2025"},{"name":"Chathuranga Rajapaksha","product":"DriverlessAI","department":"DevOps Engineering","jobTitle":"Senior Software Engineer","manager":"Achraf Merzouki","tenure":0.4,"isIntern":false,"firstDay":"Dec 22, 2025"},{"name":"Chathurinda Ranasinghe","product":"DevOps Infra","department":"Infrastructure","jobTitle":"Software Engineer, DevOps","manager":"Hasith Perera","tenure":1.8,"isIntern":false,"firstDay":"Jul 22, 2024"},{"name":"Dhanika Kumarasiri","product":"DevOps Infra","department":"Infrastructure","jobTitle":"Software Engineer","manager":"Hasith Perera","tenure":1.1,"isIntern":false,"firstDay":"Jul 8, 2026"},{"name":"Dilakshan Muniyappan","product":"Verticals","department":"DevOps Engineering","jobTitle":"Software Engineer","manager":"Vijitha Ekanayake","tenure":0.1,"isIntern":false,"firstDay":"Apr 2, 2026"},{"name":"Dinuka Appuhamy","product":"DevOps Infra","department":"Infrastructure","jobTitle":"DevOps Engineer","manager":"Hasith Perera","tenure":2.4,"isIntern":false,"firstDay":"Dec 4, 2023"},{"name":"Dinul Senanayake","product":"Customer Training","department":"CS Training Services","jobTitle":"Technical Content Specialist","manager":"Andreea Turcu","tenure":1.9,"isIntern":false,"firstDay":"Jun 3, 2024"},{"name":"Dulaj Atapattu","product":"Platform Services","department":"DevOps Engineering","jobTitle":"Manager, Full Stack Development","manager":"Cody Harris","tenure":5.5,"isIntern":false,"firstDay":"Oct 26, 2020"},{"name":"Hasith Perera","product":"DevOps Infra","department":"Infrastructure","jobTitle":"Manager, Software Development","manager":"Asaf Oren","tenure":5.1,"isIntern":false,"firstDay":"Mar 15, 2021"},{"name":"Isuru Didulantha","product":"DriverlessAI","department":"Product Engineering","jobTitle":"Intern, Engineering","manager":"Muraleetharan Mathanraj","tenure":0.5,"isIntern":true,"firstDay":"Oct 27, 2025"},{"name":"Kajanan Selvanesan","product":"MLOps","department":"DevOps Engineering","jobTitle":"Software Engineer","manager":"Kuba Hava","tenure":1.9,"isIntern":false,"firstDay":"Jun 3, 2024"},{"name":"Lakindu Gunasekara","product":"h2oGPTe","department":"DevOps Engineering","jobTitle":"DevOps Engineer","manager":"Achraf Merzouki","tenure":4.3,"isIntern":false,"firstDay":"Jan 31, 2022"},{"name":"Lasith Manujitha Gunawardena","product":"Verticals","department":"DevOps Engineering","jobTitle":"Software Engineer","manager":"Vijitha Ekanayake","tenure":0.8,"isIntern":false,"firstDay":"Jul 1, 2025"},{"name":"Luxshan Thavarasa","product":"h2oGPTe","department":"Innovation Engineering","jobTitle":"Software Engineer","manager":"Vijitha Ekanayake","tenure":0.8,"isIntern":false,"firstDay":"Jul 1, 2025"},{"name":"Mamta Nallaretnam","product":"MC Apps","department":"Product Engineering","jobTitle":"Intern, Engineering","manager":"Vijitha Ekanayake","tenure":0.8,"isIntern":true,"firstDay":"Jul 7, 2025"},{"name":"Movin Silva","product":"DevOps Infra","department":"Infrastructure","jobTitle":"Software Engineer, DevOps","manager":"Hasith Perera","tenure":0.8,"isIntern":false,"firstDay":"Jul 1, 2025"},{"name":"Muraleetharan Mathanraj","product":"DriverlessAI","department":"DevOps Engineering","jobTitle":"Machine Learning Engineer","manager":"Cindy Parker","tenure":4.9,"isIntern":false,"firstDay":"Jun 7, 2021"},{"name":"Nivin Madawalage","product":"MC","department":"Infrastructure","jobTitle":"Software Engineer","manager":"Asaf Oren","tenure":1.2,"isIntern":false,"firstDay":"Mar 10, 2025"},{"name":"Pasindu Dissanayake","product":"MC","department":"Infrastructure","jobTitle":"Software Engineer, Cloud DevOps","manager":"Avner Vidal","tenure":0.7,"isIntern":false,"firstDay":"Aug 25, 2025"},{"name":"Poorna Cooray","product":"DriverlessAI","department":"DevOps Engineering","jobTitle":"Software Engineer","manager":"Achraf Merzouki","tenure":1.9,"isIntern":false,"firstDay":"Jun 3, 2024"},{"name":"Prathushan Inparaj","product":"h2oGPTe","department":"Innovation Engineering","jobTitle":"Machine Learning Engineer","manager":"Vijitha Ekanayake","tenure":1.9,"isIntern":false,"firstDay":"Jun 3, 2024"},{"name":"Rohan Silva","product":"DriverlessAI","department":"DevOps Engineering","jobTitle":"DevOps Engineer","manager":"Cindy Parker","tenure":1.9,"isIntern":false,"firstDay":"Jun 3, 2024"},{"name":"Rumesh Sirithunga","product":"Platform Services","department":"CS Technical Support","jobTitle":"Senior Software Engineer","manager":"Cody Harris","tenure":4.0,"isIntern":false,"firstDay":"May 2, 2022"},{"name":"Rupeekshan Maheswaran","product":"MLOps","department":"DevOps Engineering","jobTitle":"QA Engineer","manager":"Kuba Hava","tenure":2.5,"isIntern":false,"firstDay":"Nov 6, 2023"},{"name":"Sandev Kuruppu","product":"DevOps Infra","department":"Infrastructure","jobTitle":"Software Engineer, DevOps","manager":"Hasith Perera","tenure":0.8,"isIntern":false,"firstDay":"Jul 1, 2025"},{"name":"Senal Weerasinghe","product":"Feature Store","department":"DevOps Engineering","jobTitle":"Senior Software Engineer","manager":"Kuba Hava","tenure":2.0,"isIntern":false,"firstDay":"May 6, 2024"},{"name":"Shamil Prematunga","product":"MC Apps","department":"Infrastructure","jobTitle":"Senior Software Engineer","manager":"Asaf Oren","tenure":4.1,"isIntern":false,"firstDay":"Mar 14, 2022"},{"name":"Shashmitha Bandara","product":"DevOps Infra","department":"DevOps Engineering","jobTitle":"Intern, Engineering","manager":"Hasith Perera","tenure":0.0,"isIntern":true,"firstDay":"Apr 20, 2026"},{"name":"Shaun Yogeshwaran","product":"Documentation","department":"DevOps Engineering","jobTitle":"Junior Technical Writer","manager":"Sherene Mahanama","tenure":1.0,"isIntern":false,"firstDay":"May 19, 2025"},{"name":"Sherangi Rathnasiri","product":"Documentation","department":"DevOps Engineering","jobTitle":"Technical Writer","manager":"Sherene Mahanama","tenure":0.4,"isIntern":false,"firstDay":"Dec 22, 2025"},{"name":"Sherene Mahanama","product":"Documentation","department":"DevOps Engineering","jobTitle":"Manager, Technical Documentation","manager":"Michelle Tanco","tenure":4.4,"isIntern":false,"firstDay":"Dec 20, 2021"},{"name":"Vijitha Ekanayake","product":"Verticals","department":"DevOps Engineering","jobTitle":"Manager, Full Stack Development","manager":"Michal Malohlava","tenure":5.5,"isIntern":false,"firstDay":"Oct 26, 2020"},{"name":"Yohan Trevoy Gnanapragasam","product":"Management","department":"DevOps Engineering","jobTitle":"VP of Engineering, APAC","manager":"Michal Malohlava","tenure":0.0,"isIntern":false,"firstDay":"May 6, 2026"}],"productBreakdown":[{"product":"DevOps Infra","slCount":7,"totalCount":7,"slPct":100,"ofSLPct":19},{"product":"DriverlessAI","slCount":5,"totalCount":7,"slPct":71,"ofSLPct":14},{"product":"MC","slCount":4,"totalCount":7,"slPct":57,"ofSLPct":11},{"product":"Platform Services","slCount":3,"totalCount":6,"slPct":50,"ofSLPct":8},{"product":"Verticals","slCount":3,"totalCount":4,"slPct":75,"ofSLPct":8},{"product":"h2oGPTe","slCount":3,"totalCount":11,"slPct":27,"ofSLPct":8},{"product":"Documentation","slCount":3,"totalCount":4,"slPct":75,"ofSLPct":8},{"product":"MLOps","slCount":2,"totalCount":6,"slPct":33,"ofSLPct":6},{"product":"MC Apps","slCount":2,"totalCount":2,"slPct":100,"ofSLPct":6},{"product":"HAIC Delivery","slCount":1,"totalCount":11,"slPct":9,"ofSLPct":3},{"product":"Customer Training","slCount":1,"totalCount":2,"slPct":50,"ofSLPct":3},{"product":"Feature Store","slCount":1,"totalCount":2,"slPct":50,"ofSLPct":3},{"product":"Management","slCount":1,"totalCount":6,"slPct":17,"ofSLPct":3}],"totalSL":36,"totalAll":118,"slPctOfAll":31,"internCount":4,"avgTenure":2.1,"lastUpdated":"Aug 11, 2026 (snapshot)","isPreview":false}
+</script>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-logo">H2O.ai</div>
+    <div>
+      <div class="brand-title">&#127472;&#127472; Sri Lanka Resources Dashboard</div>
+      <div class="brand-sub">APAC Engineering &amp; Delivery</div>
+    </div>
+  </div>
+  <div class="top-right">
+    <div class="last-updated" id="lastUpdated"></div>
+    <div class="top-badges">
+      <button class="test-btn" onclick="openTests()">&#129514; Run Tests</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="stats" id="statsRow"></div>
+
+  <div class="section-title">Product Distribution</div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <h2>LK Team by Product</h2>
+      <div class="chart-sub">Headcount distribution across products</div>
+      <div class="donut-outer">
+        <div class="donut-wrap">
+          <canvas id="donutChart"></canvas>
+          <div class="donut-center">
+            <div class="dc-num" id="donutCenter">â</div>
+            <div class="dc-lbl">members</div>
+          </div>
+        </div>
+        <div class="legend" id="donutLegend"></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h2>Sri Lanka vs. Others â by Product</h2>
+      <div class="chart-sub">% of each product team that is Sri Lanka (blue/colored) vs. rest of world (gray)</div>
+      <div class="bar-chart-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-title">Team Directory</div>
+  <div class="search-section">
+    <div class="search-bar-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search by name, product, title, or managerâ¦">
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">Filter by product:</span>
+      <span id="productChips"></span>
+      <span id="internChip"></span>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <h2>Team Members</h2>
+      <div id="resultCount"></div>
+    </div>
+    <div id="tableWrap">
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Product</th><th>Job Title</th><th>Manager</th><th>Department</th><th>Tenure</th><th>Joined</th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="no-results" id="noResults" style="display:none">No team members match your search.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ââ Test Panel âââââââââââââââââââââââââââââââ -->
+<div id="testPanel">
+  <div id="testToolbar">
+    <span>&#129514; Test Suite &mdash; Dashboard Functionality &amp; Data Accuracy</span>
+    <div id="testToolbarRight">
+      <button id="testRunBtn" onclick="runAllTests()">&#9654; Run All</button>
+      <button id="testCloseBtn" onclick="closeTests()">&#215;</button>
+    </div>
+  </div>
+  <div id="testOutput"><span class="t-info">Press "Run All" to execute the test suite.</span></div>
+</div>
+
+<script>
+var D = JSON.parse(document.getElementById('dashData').textContent);
+
+var PALETTE = [
+  '#3B82F6','#8B5CF6','#06B6D4','#F59E0B','#10B981',
+  '#EC4899','#EF4444','#84CC16','#F97316','#6366F1',
+  '#14B8A6','#A78BFA','#FB7185'
+];
+function pColor(i){return PALETTE[i % PALETTE.length];}
+var pColorMap = {};
+D.productBreakdown.forEach(function(p, i){ pColorMap[p.product] = i; });
+
+document.getElementById('lastUpdated').textContent = 'Last updated: ' + D.lastUpdated;
+document.getElementById('donutCenter').textContent = D.totalSL;
+
+var statsData = [
+  {icon:'ð±ð°', value:D.totalSL, label:'Sri Lanka Headcount', sub:'active employees'},
+  {icon:'ð', value:D.slPctOfAll + '%', label:'of Global Team', sub:'(' + D.totalAll + ' total active globally)'},
+  {icon:'ð', value:D.internCount, label:'Current Interns', sub:'of ' + D.totalSL + ' LK total'},
+];
+document.getElementById('statsRow').innerHTML = statsData.map(function(s){
+  return '<div class="stat-card">'
+    + '<div class="stat-icon">' + s.icon + '</div>'
+    + '<div class="stat-value">' + s.value + '</div>'
+    + '<div class="stat-label">' + s.label + '</div>'
+    + '<div class="stat-sub">'  + s.sub   + '</div>'
+    + '</div>';
+}).join('');
+
+var donutChart = new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: D.productBreakdown.map(function(p){ return p.product; }),
+    datasets:[{
+      data: D.productBreakdown.map(function(p){ return p.slCount; }),
+      backgroundColor: D.productBreakdown.map(function(p,i){ return pColor(i); }),
+      borderWidth: 2, borderColor: '#fff', hoverOffset: 8
+    }]
+  },
+  options: {
+    cutout: '62%',
+    plugins: {
+      legend: {display: false},
+      tooltip: {callbacks:{label:function(ctx){
+        return ' ' + ctx.label + ': ' + ctx.parsed + ' (' + Math.round(ctx.parsed / D.totalSL * 100) + '%)';
+      }}}
+    },
+    animation: {duration:600}
+  }
+});
+
+document.getElementById('donutLegend').innerHTML = D.productBreakdown.map(function(p,i){
+  return '<div class="legend-item" onclick="activateChip(\'' + p.product.replace(/'/g,"\\'") + '\')">'
+    + '<span class="legend-dot" style="background:' + pColor(i) + '"></span>'
+    + '<span class="legend-name">' + p.product + '</span>'
+    + '<span class="legend-cnt">' + p.slCount + '</span>'
+    + '<span class="legend-pct">' + p.ofSLPct + '%</span>'
+    + '</div>';
+}).join('');
+
+var stackSorted = D.productBreakdown.slice().sort(function(a,b){ return b.slPct - a.slPct; });
+var barChart = new Chart(document.getElementById('barChart'), {
+  type: 'bar',
+  data: {
+    labels: stackSorted.map(function(p){ return p.product; }),
+    datasets: [
+      {
+        label: 'Sri Lanka',
+        data: stackSorted.map(function(p){ return p.slPct; }),
+        backgroundColor: stackSorted.map(function(p){ return pColor(pColorMap[p.product]); }),
+        borderWidth: 0
+      },
+      {
+        label: 'Others',
+        data: stackSorted.map(function(p){ return 100 - p.slPct; }),
+        backgroundColor: '#CBD5E1',
+        borderWidth: 0
+      }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: {position:'bottom', labels:{font:{size:11}, boxWidth:12}},
+      tooltip: {callbacks:{label:function(ctx){
+        var p = stackSorted[ctx.dataIndex];
+        if(ctx.datasetIndex === 0){
+          return ' Sri Lanka: ' + p.slCount + ' / ' + p.totalCount + ' (' + p.slPct + '%)';
+        } else {
+          return ' Others: ' + (p.totalCount - p.slCount) + ' / ' + p.totalCount + ' (' + (100 - p.slPct) + '%)';
+        }
+      }}}
+    },
+    scales: {
+      x: {stacked:true, min:0, max:100, grid:{color:'#F1F5F9'},
+          ticks:{callback:function(v){return v+'%';}, font:{size:10}}},
+      y: {stacked:true, grid:{display:false}, ticks:{font:{size:10}}}
+    },
+    animation: {duration:600}
+  }
+});
+
+var activeProduct = null;
+var showInterns   = false;
+
+var chips = document.getElementById('productChips');
+chips.innerHTML = D.productBreakdown.map(function(p){
+  return '<span class="chip" data-product="' + p.product + '" onclick="toggleChip(this)">' + p.product + '</span>';
+}).join('');
+
+document.getElementById('internChip').innerHTML =
+  '<span class="chip intern-chip" id="internChipEl" onclick="toggleIntern(this)">ð Interns only</span>';
+
+function toggleChip(el) {
+  var prod = el.getAttribute('data-product');
+  document.querySelectorAll('.chip:not(.intern-chip)').forEach(function(c){ c.classList.remove('active'); });
+  if(activeProduct === prod){ activeProduct = null; }
+  else { activeProduct = prod; el.classList.add('active'); }
+  renderTable();
+}
+function activateChip(prod) {
+  document.querySelectorAll('.chip:not(.intern-chip)').forEach(function(c){
+    c.classList.toggle('active', c.getAttribute('data-product') === prod);
+  });
+  activeProduct = (activeProduct === prod) ? null : prod;
+  renderTable();
+}
+function toggleIntern(el) {
+  showInterns = !showInterns;
+  el.classList.toggle('active', showInterns);
+  renderTable();
+}
+
+function renderTable() {
+  var q = document.getElementById('searchInput').value.toLowerCase().trim();
+  var rows = D.employees.filter(function(e){
+    var matchSearch = !q
+      || e.name.toLowerCase().includes(q)
+      || e.product.toLowerCase().includes(q)
+      || e.jobTitle.toLowerCase().includes(q)
+      || e.manager.toLowerCase().includes(q)
+      || e.department.toLowerCase().includes(q);
+    var matchProduct = !activeProduct || e.product === activeProduct;
+    var matchIntern  = !showInterns  || e.isIntern;
+    return matchSearch && matchProduct && matchIntern;
+  });
+
+  var tbody = document.getElementById('tableBody');
+  var noRes = document.getElementById('noResults');
+  var count = document.getElementById('resultCount');
+
+  count.textContent = rows.length + ' of ' + D.employees.length + ' members';
+
+  if(rows.length === 0){
+    tbody.innerHTML = '';
+    noRes.style.display = 'block';
+    return;
+  }
+  noRes.style.display = 'none';
+
+  tbody.innerHTML = rows.map(function(e){
+    var ci = pColorMap[e.product] !== undefined ? pColorMap[e.product] : 0;
+    var col = pColor(ci);
+    var badge = '<span class="product-badge" style="background:' + col + '22;color:' + col + '">' + e.product + '</span>';
+    var intern = e.isIntern ? '<span class="intern-badge">INTERN</span>' : '';
+    var tenure = e.tenure < 0.1 ? '< 1 mo' : (e.tenure < 1 ? Math.round(e.tenure * 12) + ' mo' : e.tenure.toFixed(1) + ' yr');
+    return '<tr>'
+      + '<td class="name-cell">' + e.name + intern + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td class="job-title">' + e.jobTitle + '</td>'
+      + '<td class="muted">' + e.manager + '</td>'
+      + '<td class="muted">' + e.department + '</td>'
+      + '<td class="tenure">' + tenure + '</td>'
+      + '<td class="muted">' + e.firstDay + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', renderTable);
+renderTable();
+
+function openTests(){ document.getElementById('testPanel').classList.add('open'); }
+function closeTests(){ document.getElementById('testPanel').classList.remove('open'); }
+
+function runAllTests(){
+  var out = document.getElementById('testOutput');
+  var lines = [];
+  var passed = 0, failed = 0;
+
+  function suite(name){ lines.push('<span class="t-suite">â¶ ' + name + '</span>'); }
+  function pass(msg){ lines.push('<span class="t-pass">â ' + msg + '</span>'); passed++; }
+  function fail(msg){ lines.push('<span class="t-fail">â ' + msg + '</span>'); failed++; }
+  function assert(cond, ok, bad){ cond ? pass(ok) : fail(bad); }
+
+  suite('DATA INTEGRITY');
+  assert(D.totalSL === 36, 'Total LK headcount = 36', 'Total LK headcount expected 36, got ' + D.totalSL);
+  assert(D.totalAll === 118, 'Global headcount = 118', 'Global headcount expected 118, got ' + D.totalAll);
+  assert(D.internCount === 4, 'Intern count = 4', 'Intern count expected 4, got ' + D.internCount);
+  var calcInterns = D.employees.filter(function(e){ return e.isIntern; }).length;
+  assert(calcInterns === 4, 'employees[] contains exactly 4 interns', 'employees[] intern count expected 4, got ' + calcInterns);
+  assert(D.employees.length === 36, 'employees[] array length = 36', 'employees[] length expected 36, got ' + D.employees.length);
+  assert(D.slPctOfAll === 31, 'LK % of global team = 31%', 'LK % expected 31, got ' + D.slPctOfAll);
+  assert(D.productBreakdown.length === 13, 'productBreakdown has 13 products', 'productBreakdown length expected 13, got ' + D.productBreakdown.length);
+
+  suite('PRODUCT HEADCOUNTS');
+  var pbMap = {};
+  D.productBreakdown.forEach(function(p){ pbMap[p.product] = p; });
+  var expected = {'DevOps Infra':7,'DriverlessAI':5,'MC':4,'Platform Services':3,'Verticals':3,'h2oGPTe':3,'Documentation':3,'MLOps':2,'MC Apps':2,'HAIC Delivery':1,'Customer Training':1,'Feature Store':1,'Management':1};
+  Object.keys(expected).forEach(function(prod){
+    var fromBreakdown = pbMap[prod] ? pbMap[prod].slCount : 0;
+    var fromEmployees = D.employees.filter(function(e){ return e.product === prod; }).length;
+    assert(fromBreakdown === expected[prod], prod + ': breakdown count = ' + expected[prod], prod + ': breakdown expected ' + expected[prod] + ', got ' + fromBreakdown);
+    assert(fromEmployees === expected[prod], prod + ': employees[] count = ' + expected[prod], prod + ': employees[] expected ' + expected[prod] + ', got ' + fromEmployees);
+  });
+
+  suite('NAMED EMPLOYEE SPOT-CHECKS');
+  function findEmployee(name){ return D.employees.find(function(e){ return e.name === name; }); }
+  var hasith = findEmployee('Hasith Perera');
+  assert(!!hasith, 'Hasith Perera exists in dataset', 'Hasith Perera NOT FOUND');
+  if(hasith){ assert(hasith.product === 'DevOps Infra', 'Hasith Perera â DevOps Infra', 'Hasith product wrong: ' + hasith.product); }
+  var vijitha = findEmployee('Vijitha Ekanayake');
+  assert(!!vijitha, 'Vijitha Ekanayake exists in dataset', 'Vijitha Ekanayake NOT FOUND');
+  if(vijitha){ assert(vijitha.product === 'Verticals', 'Vijitha Ekanayake â Verticals', 'Vijitha product wrong: ' + vijitha.product); }
+  var yohan = findEmployee('Yohan Trevoy Gnanapragasam');
+  assert(!!yohan, 'Yohan Trevoy Gnanapragasam exists in dataset', 'Yohan NOT FOUND');
+  if(yohan){
+    assert(yohan.product === 'Management', 'Yohan â Management', 'Yohan product wrong: ' + yohan.product);
+    assert(yohan.jobTitle === 'VP of Engineering, APAC', 'Yohan job title correct', 'Yohan job title wrong: ' + yohan.jobTitle);
+  }
+  ['Shashmitha Bandara','Abishanthan Sarawanaraja','Isuru Didulantha','Mamta Nallaretnam'].forEach(function(name){
+    var e = findEmployee(name);
+    assert(!!e && e.isIntern, name + ' is marked intern', name + ' not found or not marked intern');
+  });
+
+  suite('DOM & UI ELEMENTS');
+  assert(!!document.getElementById('statsRow'), 'Stats row element exists', 'statsRow element missing');
+  assert(document.getElementById('statsRow').children.length === 3, 'Three stat cards rendered', 'Expected 3 stat cards, got ' + document.getElementById('statsRow').children.length);
+  assert(!!document.getElementById('searchInput'), 'Search input exists', 'searchInput missing');
+  assert(!!document.getElementById('tableBody'), 'Table body exists', 'tableBody missing');
+  assert(!!document.getElementById('donutChart'), 'Donut canvas exists', 'donutChart canvas missing');
+  assert(!!document.getElementById('barChart'), 'Bar canvas exists', 'barChart canvas missing');
+  assert(document.querySelectorAll('#productChips .chip').length === 13, 'All 13 product chips rendered', '13 chips expected, got ' + document.querySelectorAll('#productChips .chip').length);
+  assert(document.querySelectorAll('#tableBody tr').length === 36, 'All 36 rows rendered', '36 rows expected, got ' + document.querySelectorAll('#tableBody tr').length);
+  assert(document.querySelectorAll('.intern-badge').length === 4, '4 INTERN badges visible', '4 badges expected, got ' + document.querySelectorAll('.intern-badge').length);
+
+  suite('CHART RENDERING');
+  var chartJsLoaded = typeof Chart !== 'undefined';
+  assert(chartJsLoaded, 'Chart.js loaded successfully', 'Chart.js NOT loaded');
+  try {
+    assert(donutChart instanceof Chart, 'Donut chart instance created', 'Donut Chart instance missing');
+    assert(barChart instanceof Chart, 'Stacked bar chart instance created', 'Bar Chart instance missing');
+    var donutData = donutChart.data.datasets[0].data;
+    assert(donutData.length === 13, 'Donut chart has 13 data points', 'Donut data points expected 13, got ' + donutData.length);
+    assert(donutData.reduce(function(a,b){return a+b;},0) === 36, 'Donut chart values sum to 36', 'Donut sum wrong');
+  } catch(e) { fail('Chart assertion threw: ' + e.message); }
+
+  suite('SEARCH & FILTER FUNCTIONALITY');
+  document.getElementById('searchInput').value = 'Hasith'; renderTable();
+  assert(document.querySelectorAll('#tableBody tr').length === 7, 'Search "Hasith" returns 7 rows', 'Search "Hasith" expected 7, got ' + document.querySelectorAll('#tableBody tr').length);
+  document.getElementById('searchInput').value = 'Weerasinghe'; renderTable();
+  assert(document.querySelectorAll('#tableBody tr').length === 1, 'Search "Weerasinghe" returns 1 row', 'Search "Weerasinghe" expected 1, got ' + document.querySelectorAll('#tableBody tr').length);
+  document.getElementById('searchInput').value = 'DevOps Infra'; renderTable();
+  assert(document.querySelectorAll('#tableBody tr').length === 7, 'Search "DevOps Infra" returns 7 rows', 'Expected 7, got ' + document.querySelectorAll('#tableBody tr').length);
+  document.getElementById('searchInput').value = 'xyznonexistent99'; renderTable();
+  assert(document.getElementById('noResults').style.display !== 'none', '"No results" shown for unknown search', '"No results" not shown');
+  document.getElementById('searchInput').value = ''; renderTable();
+  assert(document.querySelectorAll('#tableBody tr').length === 36, 'Clearing search restores 36 rows', 'Expected 36 after clear, got ' + document.querySelectorAll('#tableBody tr').length);
+  activeProduct = 'DriverlessAI'; renderTable();
+  assert(document.querySelectorAll('#tableBody tr').length === 5, 'DriverlessAI chip shows 5 rows', 'Expected 5, got ' + document.querySelectorAll('#tableBody tr').length);
+  activeProduct = null; showInterns = true; renderTable();
+  assert(document.querySelectorAll('#tableBody tr').length === 4, 'Intern filter shows 4 rows', 'Expected 4, got ' + document.querySelectorAll('#tableBody tr').length);
+  activeProduct = null; showInterns = false;
+  document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('active'); });
+  renderTable();
+
+  var total = passed + failed;
+  var cls = failed === 0 ? 'all-pass' : 'has-fail';
+  var icon = failed === 0 ? 'â' : 'â';
+  lines.push('<div class="t-summary ' + cls + '">' + icon + ' ' + passed + ' / ' + total + ' tests passed' + (failed > 0 ? ' â ' + failed + ' failed' : ' â All good!') + '</div>');
+  out.innerHTML = lines.join('<br>');
+  out.scrollTop = 0;
+}
+</script>
+</body>
+</html>
+ 1 mo' : (e.tenure < 1 ? Math.round(e.tenure * 12) + ' mo' : e.tenure.toFixed(1) + ' yr');
+    return '<tr>'
+      + '<td class="name-cell">' + e.name + intern + '</td>'
+      + '<td>' + badge + '</td>'
+      + '<td class="job-title">' + e.jobTitle + '</td>'
+      + '<td class="muted">' + e.manager + '</td>'
+      + '<td class="muted">' + e.department + '</td>'
+      + '<td class="tenure">' + tenure + '</td>'
+      + '<td class="muted">' + e.firstDay + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', renderTable);
+renderTable();
+
+function openTests(){ document.getElementById('testPanel').classList.add('open'); }
+function closeTests(){ document.getElementById('testPanel').classList.remove('open'); }
+
+function runAllTests(){
+  var out = document.getElementById('testOutput');
+  var lines = [];
+  var passed = 0, failed = 0;
+
+  function suite(name){ lines.push('<span class="t-suite">â¶ ' + name + '</span>'); }
+  function pass(msg){ lines.push('<span class="t-pass">â ' + msg + '</span>'); passed++; }
+  function fail(msg){ lines.push('<span class="t-fail">â ' + msg + '</span>'); failed++; }
+  function assert(cond, ok, bad){ cond ? pass(ok) : fail(bad); }
+
+  suite('DATA INTEGRITY');
+  assert(D.totalSL === 36, 'Total LK headcount = 36', 'Total LK headcount expected 36, got ' + D.totalSL);
+  assert(D.totalAll === 118, 'Global headcount = 118', 'Global headcount expected 118, got ' + D.totalAll);
+  assert(D.internCount === 4, 'Intern count = 4', 'Intern count expected 4, got ' + D.internCount);
+  var calcInterns = D.employees.filter(function(e){ return e.isIntern; }).length;
+  assert(calcInterns === 4, 'employees[] contains exactly 4 interns', 'employees[] intern count expected 4, got ' + calcInterns);
+  assert(D.employees.length === 36, 'employees[] array length = 36', 'employees[] length expected 36, got ' + D.employees.length);
+  assert(D.slPctOfAll === 31, 'LK % of global team = 31%', 'LK % expected 31, got ' + D.slPctOfAll);
+  assert(D.productBreakdown.length === 13, 'productBreakdown has 13 products', 'productBreakdown length expected 13, got ' + D.productBreakdown.length);
+
+  suite('PRODUCT HEADCOUNTS');
+  var pbMap = {};
+  D.productBreakdown.forEach(function(p){ pbMap[p.product] = p; });
+  var expected = {'DevOps Infra':7,'DriverlessAI':5,'MC':4,'Platform Services':3,'Verticals':3,'h2oGPTe':3,'Documentation':3,'MLOps':2,'MC Apps':2,'HAIC Delivery':1,'Customer Training':1,'Feature Store':1,'Management':1};
+  Object.keys(expected).forEach(function(prod){
+    var fromBreakdown = pbMap[prod] ? pbMap[prod].slCount : 0;
+    var fromEmployees = D.employees.filter(function(e){ return e.product === prod; }).length;
+    assert(fromBreakdown === expected[prod], prod + ': breakdown count = ' + expected[prod], prod + ': breakdown expected ' + expected[prod] + ', got ' + fromBreakdown);
+    assert(fromEmployees === expected[prod], prod + ': employees[] count = ' + expected[prod], prod + ': employees[] expected ' + expected[prod] + ', got ' + fromEmployees);
+  });
+
+  suite('NAMED EMPLOYEE SPOT-CHECKS');
+  function findEmployee(name){ return D.employees.find(function(e){ return e.name === name; }); }
+  var hasith = findEmployee('Hasith Perera');
+  assert(!!hasith, 'Hasith Perera exists in dataset', 'Hasith Perera NOT FOUND');
+  if(hasith){ assert(hasith.product === 'DevOps Infra', 'Hasith Perera â DevOps Infra', 'Hasith product wrong: ' + hasith.product); }
+  var vijitha = findEmployee('Vijitha Ekanayake');
+  assert(!!vijitha, 'Vijitha Ekanayake exists in dataset', 'Vijitha Ekanayake NOT FOUND');
+  if(vijitha){ assert(vijitha.product === 'Verticals', 'Vijitha Ekanayake â Verticals', 'Vijitha product wrong: ' + vijitha.product); }
+  var yohan = findEmployee('Yohan Trevoy Gnanapragasam');
+  assert(!!yohan, 'Yohan Trevoy Gnanapragasam exists in dataset', 'Yohan NOT FOUND');
+  if(yohan){
+    assert(yohan.product === 'Management', 'Yohan â Management', 'Yohan product wrong: ' + yohan.product);
+    assert(yohan.jobTitle === 'VP of Engineering, APAC', 'Yohan job title correct', 'Yohan job title wrong: ' + yohan.jobTitle);
+  }
+  ['Shashmitha Bandara','Abishanthan Sarawanaraja','Isuru Didulantha','Mamta Nallaretnam'].forEach(function(name){
+    var e = findEmployee(name);
+    assert(!!e && e.isIntern, name + ' is marked intern', name +ræ÷Bf÷VæB÷"æ÷BÖ&¶VBçFW&âr°¢Ò° ¢7VFRtDôÒbTTÄTÔTåE2r°¢76W'BFö7VÖVçBævWDVÆVÖVçD'BwF÷&"rÂr7F÷&"W7G2rÂr7F÷&"æ÷Bf÷VæBr°¢76W'BFö7VÖVçBævWDVÆVÖVçD'BvÖWG&74w&BrÂr6ÖWG&74w&BW7G2rÂr6ÖWG&74w&Bæ÷Bf÷VæBr°¢76W'BFö7VÖVçBævWDVÆVÖVçD'Bw6V&6çWBrÂr76V&6çWBW7G2rÂr76V&6çWBæ÷Bf÷VæBr°¢76W'BFö7VÖVçBævWDVÆVÖVçD'BwFW7D'FârÂr7FW7D'FâW7G2rÂr7FW7D'Fâæ÷Bf÷VæBr°¢76W'BFö7VÖVçBçVW'6VÆV7F÷$ÆÂræÆfRÖ&FvRræÆVæwFÓÓÒÂtæòæÆfRÖ&FvRâDôÒrÂræÆfRÖ&FvRf÷VæB'WB6÷VÆBfR&VVâ&VÖ÷fVBr°¢76W'BFö7VÖVçBçVW'6VÆV7F÷$ÆÂr7&WfWt&ææW"ræÆVæwFÓÓÒÂtæò7&WfWt&ææW"âDôÒrÂr7&WfWt&ææW"f÷VæB'WB6÷VÆBfR&VVâ&VÖ÷fVBr° ¢7VFRt4%B$TÔETärr°¢f"6'D6çf6W2ÒFö7VÖVçBçVW'6VÆV7F÷$ÆÂv6çf2r°¢76W'B6'D6çf6W2æÆVæwFãÒ"ÂtBÆV7B"6'B6çf6W2&VæFW&VBrÂt6'B6çf6W2WV7FVBãÒ"Âv÷Br²6'D6çf6W2æÆVæwF° ¢7VFRu4T$4bdÅDU"eTä5DôäÄEr°¢f"6V&6çWBÒFö7VÖVçBævWDVÆVÖVçD'Bw6V&6çWBr°¢b6V&6çWB°¢6V&6çWBçfÇVRÒt6Fs°¢6V&6çWBæF7F6WfVçBæWrWfVçBvçWBr°¢f"&÷w4gFW%6V&6ÒFö7VÖVçBçVW'6VÆV7F÷$ÆÂr6V×F&ÆT&öGG"ræÆVæwF°¢76W'B&÷w4gFW%6V&6ãÒÂu6V&6f÷"Ât6FÂr&WGW&ç2ãÒ&÷rrÂu6V&6f÷"6F&WGW&æVB&÷w2r°¢6V&6çWBçfÇVRÒrs°¢6V&6çWBæF7F6WfVçBæWrWfVçBvçWBr°¢f"&÷w4gFW$6ÆV"ÒFö7VÖVçBçVW'6VÆV7F÷$ÆÂr6V×F&ÆT&öGG"ræÆVæwF°¢76W'B&÷w4gFW$6ÆV"ÓÓÒ3bÂt6ÆV&ær6V&6&W7F÷&W2ÆÂ3b&÷w2rÂtgFW"6ÆV"ÂWV7FVB3b&÷w2Âv÷Br²&÷w4gFW$6ÆV"°¢ÒVÇ6R²fÂu6V&6çWBæ÷Bf÷VæBr²Ð ¢f"7VÖÖ'ÒsÇ7G&öæsâr²76VB²r76VBÂr²fÆVB²rfÆVCÂ÷7G&öæsâs°¢÷WBæææW$DÔÂÒ7VÖÖ'²sÆ'#ãÆ'#âr²ÆæW2æ¦öâsÆ'#âr°§Ð£Â÷67&Cà£Âö&öGà£ÂöFÖÃà
